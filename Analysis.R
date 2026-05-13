@@ -1,6 +1,10 @@
 # This'll be the starting analysis
+library(tidyverse)
 
-day <- 1:365
+day <- seq(1, 365, 1)
+
+pm25 <- rnorm(365, mean = 20, sd = 10) #create normal distribution of pm2.5 values
+pm25 <- abs(pm25) #convert negative values to positive
 
 seasonal_mean <- ifelse(day <= 90, 35,        # winter: elevated
                         ifelse(day <= 180, 12,        # spring: cleaner
