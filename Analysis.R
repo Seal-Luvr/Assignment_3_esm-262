@@ -49,6 +49,67 @@ for (i in 1:nrow(Air_Quality)){
 #maximum unhealthy streak
 max_unhealthy_streak
 
+# Seasonal unhealthy with 'for' loop
+
+seasons <- levels(Air_Quality$season)
+unhealthy_by_season <- setNames(integer(length(seasons)), seasons)
+
+for (s in seasons) {
+  season_subset <- Air_Quality[Air_Quality$season == s, ]
+  unhealthy_by_season[s] <- sum(season_subset$risk == "unhealthy")
+}
+
+unhealthy_by_season
+
+# Plot 1: PM2.5 time series colored by season
+plot1_title <- sprintf(
+  "Daily PM2.5 Concentrations Over One Year (Max Unhealthy Streak: %d days)",
+  max_unhealthy_streak
+)
+
+ggplot(Air_Quality, aes(x = day, y = pm25, color = season)) +
+  geom_line(linewidth = 0.6, alpha = 0.8) +
+  geom_hline(yintercept = 35.4, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  geom_hline(yintercept = 12, linetype = "dashed",
+             color = "yellow", linewidth = 0.7) +
+  annotate("text", x = 355, y = 37.2, label = "Unhealthy (35.4)",
+           color = "red", size = 3, hjust = 1) +
+  annotate("text", x = 355, y = 13.5, label = "Moderate (12.0)",
+           color = "yellow", size = 3, hjust = 1) +
+  scale_color_manual(values = c(
+    winter = "#5b9bd5",
+    spring = "#70ad47",
+    summer = "red",
+    fall   = "brown"
+  )) +
+  labs(title = plot1_title, x = "Day of Year",
+       y = "PM2.5 (µg/m³)", color = "Season") +
+  theme_minimal(base_size = 12)
+
+
+# Plot 2: Bar chart of days per risk category
+plot2_title <- sprintf(
+  "Days per Air Quality Risk Category (Max Unhealthy Streak: %d days)",
+  max_unhealthy_streak
+)
+
+Air_Quality$risk <- factor(Air_Quality$risk,
+                           levels = c("good", "moderate", "unhealthy"))
+
+ggplot(Air_Quality, aes(x = risk, fill = risk)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)),
+            vjust = -0.5, size = 4.5, fontface = "bold") +
+  scale_fill_manual(values = c(
+    good      = "#4dac26",
+    moderate  = "#f9c84a",
+    unhealthy = "#d01c1f"
+  )) +
+  labs(title = plot2_title, x = "Risk Category", y = "Number of Days") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
 
 
 
