@@ -20,6 +20,16 @@ season <- factor(season, levels = c("winter", "spring", "summer", "fall"))
 Air_Quality <- data.frame(
   day = day,
   season = season,
-  seasonal_mean = seasonal_mean,
+  pm25 = pm25,
   risk = NA
 )
+
+#Find risk
+for (i in 1:nrow(Air_Quality)){
+  Air_Quality$risk[i] <- ifelse(Air_Quality$pm25[i] <= 12, "good",
+         ifelse(Air_Quality$pm25[i] <= 35.4, "moderate",
+               "unhealthy"))
+}
+
+
+
