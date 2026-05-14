@@ -4,6 +4,8 @@ author: "Your Name"
 date: today
 format:
   html:
+    toc: true
+    code-fold: true
 execute:
   warning: false
   message: false
