@@ -1,0 +1,152 @@
+---
+title: "Assignment 3: Air Quality Analysis"
+author: "Your Name"
+date: today
+format:
+  html:
+execute:
+  warning: false
+  message: false
+---
+
+## Setup
+
+```{r}
+#| label: setup
+library(tidyverse)
+```
+
+## Data Simulation
+
+We simulate 365 days of PM2.5 concentrations using a normal distribution, then assign each day to a season based on its day of year.
+
+```{r}
+#| label: simulate-data
+set.seed(4821)
+
+day <- seq(1, 365, 1)
+
+# Normal distribution of PM2.5 values (negative values flipped to positive)
+pm25 <- rnorm(365, mean = 20, sd = 15)
+pm25 <- abs(pm25)
+
+# Seasonal mean thresholds (not used directly in simulation but kept for reference)
+seasonal_mean <- ifelse(day <= 90, 35,
+                        ifelse(day <= 180, 12,
+                               ifelse(day <= 270, 5,
+                                      15)))
+
+season <- ifelse(day <= 90,  "winter",
+                 ifelse(day <= 180, "spring",
+                        ifelse(day <= 270, "summer",
+                               "fall")))
+season <- factor(season, levels = c("winter", "spring", "summer", "fall"))
+
+Air_Quality <- data.frame(
+  day = day,
+  season = season,
+  pm25 = pm25,
+  risk = NA
+)
+```
+
+## Risk Classification
+
+Each day is classified as **good** (≤ 12 µg/m³), **moderate** (≤ 35.4 µg/m³), or **unhealthy** (> 35.4 µg/m³) based on EPA PM2.5 breakpoints. We also track the longest consecutive streak of unhealthy days.
+
+```{r}
+#| label: classify-risk
+unhealthy_streak <- 0
+max_unhealthy_streak <- 0
+
+for (i in 1:nrow(Air_Quality)) {
+  Air_Quality$risk[i] <- ifelse(Air_Quality$pm25[i] <= 12, "good",
+                         ifelse(Air_Quality$pm25[i] <= 35.4, "moderate",
+                                "unhealthy"))
+
+  unhealthy_streak <- ifelse(Air_Quality$risk[i] == "unhealthy",
+                             unhealthy_streak + 1,
+                             0)
+
+  max_unhealthy_streak <- ifelse(unhealthy_streak > max_unhealthy_streak,
+                                 unhealthy_streak,
+                                 max_unhealthy_streak)
+}
+
+Air_Quality$risk <- factor(Air_Quality$risk,
+                           levels = c("good", "moderate", "unhealthy"))
+```
+
+The longest consecutive streak of unhealthy days was **`r max_unhealthy_streak` days**.
+
+## Unhealthy Days by Season
+
+```{r}
+#| label: unhealthy-by-season
+seasons <- levels(Air_Quality$season)
+unhealthy_by_season <- setNames(integer(length(seasons)), seasons)
+
+for (s in seasons) {
+  season_subset <- Air_Quality[Air_Quality$season == s, ]
+  unhealthy_by_season[s] <- sum(season_subset$risk == "unhealthy")
+}
+
+unhealthy_by_season
+```
+
+## Visualizations
+
+### PM2.5 Time Series
+
+```{r}
+#| label: fig-timeseries
+#| fig-cap: "Daily PM2.5 concentrations over one year, colored by season. Dashed lines indicate risk thresholds."
+plot1_title <- sprintf(
+  "Daily PM2.5 Concentrations Over One Year (Max Unhealthy Streak: %d days)",
+  max_unhealthy_streak
+)
+
+ggplot(Air_Quality, aes(x = day, y = pm25, color = season)) +
+  geom_line(linewidth = 0.6, alpha = 0.8) +
+  geom_hline(yintercept = 35.4, linetype = "dashed",
+             color = "red", linewidth = 0.7) +
+  geom_hline(yintercept = 12, linetype = "dashed",
+             color = "yellow", linewidth = 0.7) +
+  annotate("text", x = 355, y = 37.2, label = "Unhealthy (35.4)",
+           color = "red", size = 3, hjust = 1) +
+  annotate("text", x = 355, y = 13.5, label = "Moderate (12.0)",
+           color = "yellow", size = 3, hjust = 1) +
+  scale_color_manual(values = c(
+    winter = "#5b9bd5",
+    spring = "#70ad47",
+    summer = "red",
+    fall   = "brown"
+  )) +
+  labs(title = plot1_title, x = "Day of Year",
+       y = "PM2.5 (µg/m³)", color = "Season") +
+  theme_minimal(base_size = 12)
+```
+
+### Days per Risk Category
+
+```{r}
+#| label: fig-risk-bar
+#| fig-cap: "Count of days falling into each air quality risk category."
+plot2_title <- sprintf(
+  "Days per Air Quality Risk Category (Max Unhealthy Streak: %d days)",
+  max_unhealthy_streak
+)
+
+ggplot(Air_Quality, aes(x = risk, fill = risk)) +
+  geom_bar() +
+  geom_text(stat = "count", aes(label = after_stat(count)),
+            vjust = -0.5, size = 4.5, fontface = "bold") +
+  scale_fill_manual(values = c(
+    good      = "#4dac26",
+    moderate  = "#f9c84a",
+    unhealthy = "#d01c1f"
+  )) +
+  labs(title = plot2_title, x = "Risk Category", y = "Number of Days") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+```
